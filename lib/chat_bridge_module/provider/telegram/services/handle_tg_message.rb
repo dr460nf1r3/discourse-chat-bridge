@@ -75,11 +75,16 @@ module ::ChatBridgeModule::Provider::Telegram::Services
     end
 
     def fetch_message_creation(params:, bot:, fake_user:, channel_id:, message_to_edit:)
+      if (channel = ::Chat::Channel.find_by_id_or_slug(channel_id))
+        channel.add(fake_user.user) unless channel.membership_for(fake_user.user)
+      end
+
       if message_to_edit.present?
         ::Chat::UpdateMessage.call(
           guardian: ::ChatBridgeModule::GhostUserGuardian.new(fake_user.user),
           params: {
             message_id: message_to_edit.message_id,
+            channel_id: channel_id,
             **::ChatBridgeModule::Provider::Telegram::Parsers::DiscourseMessage.make(
               bot,
               fake_user.user,
@@ -99,7 +104,7 @@ module ::ChatBridgeModule::Provider::Telegram::Services
             ),
           },
           options: {
-            enforce_membership: false,
+            enforce_membership: true,
           },
         )
       end
@@ -124,13 +129,14 @@ module ::ChatBridgeModule::Provider::Telegram::Services
       )
     end
 
-    def after_succeed(fake_user:, params:, channel_id:)
+    def after_succeed(fake_user:, params:, channel_id:, bot:)
       Scheduler::Defer.later("Telegram Bridge Update User Profile") do
         ::ChatBridgeModule::Provider::Telegram::Services::UpdateUserProfile.call(
           params: {
             user: fake_user.user,
             message: params.message,
             channel_id: channel_id,
+            bot: bot,
           },
         )
       end

@@ -13,10 +13,16 @@
           },
         )
 
-      Rails.logger.error(<<~TEXT) if result.failure?
-          [Telegram Bridge] Failed to bridge message:
-          #{result.inspect_steps}
-          TEXT
+      if result.failure?
+        begin
+          Rails.logger.error(<<~TEXT)
+            [Telegram Bridge] Failed to bridge message:
+            #{result.inspect_steps}
+            TEXT
+        rescue => e
+          STDERR.puts "[Telegram Bridge] Failed to bridge message: \n#{result.inspect_steps} (Logging error: #{e.message})"
+        end
+      end
     end
   end
 end
@@ -47,8 +53,12 @@ end
             event:,
           },
         )
-      if result.failure? && !(%w[BRIDGE_BACK INVALID_BOT].include? result.inspect_steps.to_s)
-        Rails.logger.warn("[Discourse -> Telegram] Failed in #{event}: \n#{result.inspect_steps}")
+      if result.failure? && !%w[BRIDGE_BACK INVALID_BOT].any? { |reason| result.inspect_steps.to_s.include?(reason) }
+        begin
+          Rails.logger.warn("[Discourse -> Telegram] Failed in #{event}: \n#{result.inspect_steps}")
+        rescue => e
+          STDERR.puts "[Discourse -> Telegram] Failed in #{event}: \n#{result.inspect_steps} (Logging error: #{e.message})"
+        end
       end
     end
   end

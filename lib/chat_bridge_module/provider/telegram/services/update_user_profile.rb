@@ -73,7 +73,7 @@ module ::ChatBridgeModule::Provider::Telegram::Services
           return "Don't need update"
         end
 
-        bot.get_upload_from_file(
+        params.bot.get_upload_from_file(
           user: params.user,
           file: response["result"]["photos"][0][0],
           type: "avatar",

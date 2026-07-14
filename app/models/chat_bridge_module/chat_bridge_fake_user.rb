@@ -13,6 +13,12 @@ module ::ChatBridgeModule
       else
         fake_user = self.find_by(provider_id:, external_username: external_user_id)
       end
+
+      if fake_user.present? && fake_user.user.nil?
+        fake_user.destroy!
+        fake_user = nil
+      end
+
       if fake_user.nil?
         u = User.find_by(username:)
         if u.nil?
